@@ -1,8 +1,8 @@
 import pytest
 
-from src.models.coins import Coins
-from src.models.product import Product
-from src.utils import pence_to_string
+from src.domain.coins import Coins
+from src.domain.product import Product
+from src.utils.formatting import pence_to_string
 
 
 def test_coins_validation_rejects_invalid_denomination() -> None:

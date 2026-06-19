@@ -1,6 +1,6 @@
-from src.models.coins import Coins
-from src.models.product import Product
-from src.vending_machine import VendingMachine
+from src.domain.coins import Coins
+from src.domain.product import Product
+from src.domain.vending_machine import VendingMachine
 
 
 def main():
