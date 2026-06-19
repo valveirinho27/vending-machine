@@ -10,6 +10,20 @@ class VendingMachine:
         self.change: dict[str, int] = {c.denomination: c.quantity for c in change}
         self.current: int = 0
 
+    def _calculate_change(self, amount: int) -> tuple[list[str], int]:
+        change_to_return: list[str] = []
+        remaining = amount
+
+        for denomination in sorted(COIN_DENOMINATIONS, key=lambda d: COIN_DENOMINATIONS[d], reverse=True):
+            value = COIN_DENOMINATIONS[denomination]
+            available = self.change.get(denomination, 0)
+            while remaining >= value and available > 0:
+                change_to_return.append(denomination)
+                remaining -= value
+                available -= 1
+
+        return change_to_return, remaining
+
     def reload_change(self, change: list[Coins]) -> None:
         for coin in change:
             if coin.denomination in self.change:
@@ -46,6 +60,13 @@ class VendingMachine:
             print(f"Not enough money inserted. Please insert the remaining: {pence_to_string(shortfall)}.")
             return
 
+        change_due = self.current - product.price
+        if change_due > 0:
+            _, remaining = self._calculate_change(change_due)
+            if remaining != 0:
+                print("Unable to dispense product because exact change is not available.")
+                return
+
         self.current -= product.price
         product.amount -= 1
         print(f"Dispensing {product.name}.")
@@ -55,16 +76,7 @@ class VendingMachine:
         if self.current == 0:
             return
 
-        change_to_return = []
-        remaining = self.current
-
-        for denomination in sorted(COIN_DENOMINATIONS, key=lambda d: COIN_DENOMINATIONS[d], reverse=True):
-            value = COIN_DENOMINATIONS[denomination]
-            available = self.change.get(denomination, 0)
-            while remaining >= value and available > 0:
-                change_to_return.append(denomination)
-                remaining -= value
-                available -= 1
+        change_to_return, remaining = self._calculate_change(self.current)
 
         # Commit whatever coins we could gather
         for denomination in change_to_return:
