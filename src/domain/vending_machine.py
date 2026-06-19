@@ -1,28 +1,15 @@
 from src.constants import COIN_DENOMINATIONS
-from src.models.coins import Coins
-from src.models.product import Product
-from src.utils import pence_to_string
+from src.domain.coins import Coins
+from src.domain.product import Product
+from src.services.change_maker import ChangeMaker
+from src.utils.formatting import pence_to_string
 
 
 class VendingMachine:
-    def __init__(self, products: list[Product], change: list[Coins]):
+    def __init__(self, products: list[Product], change: list[Coins]) -> None:
         self.products: dict[str, Product] = {p.name: p for p in products}
         self.change: dict[str, int] = {c.denomination: c.quantity for c in change}
         self.current: int = 0
-
-    def _calculate_change(self, amount: int) -> tuple[list[str], int]:
-        change_to_return: list[str] = []
-        remaining = amount
-
-        for denomination in sorted(COIN_DENOMINATIONS, key=lambda d: COIN_DENOMINATIONS[d], reverse=True):
-            value = COIN_DENOMINATIONS[denomination]
-            available = self.change.get(denomination, 0)
-            while remaining >= value and available > 0:
-                change_to_return.append(denomination)
-                remaining -= value
-                available -= 1
-
-        return change_to_return, remaining
 
     def reload_change(self, change: list[Coins]) -> None:
         for coin in change:
@@ -62,8 +49,8 @@ class VendingMachine:
 
         change_due = self.current - product.price
         if change_due > 0:
-            _, remaining = self._calculate_change(change_due)
-            if remaining != 0:
+            change_plan = ChangeMaker.calculate(change_due, self.change)
+            if not change_plan.exact:
                 print("Unable to dispense product because exact change is not available.")
                 return
 
@@ -76,17 +63,16 @@ class VendingMachine:
         if self.current == 0:
             return
 
-        change_to_return, remaining = self._calculate_change(self.current)
+        change_plan = ChangeMaker.calculate(self.current, self.change)
 
-        # Commit whatever coins we could gather
-        for denomination in change_to_return:
+        for denomination in change_plan.coins:
             self.change[denomination] -= 1
 
         self.current = 0
 
-        if change_to_return:
-            print(f"Returning change: {', '.join(change_to_return)}.")
+        if change_plan.coins:
+            print(f"Returning change: {', '.join(change_plan.coins)}.")
 
-        if remaining != 0:
-            print(f"Warning: Unable to return exact change. Missing {pence_to_string(remaining)}.")
+        if not change_plan.exact:
+            print(f"Warning: Unable to return exact change. Missing {pence_to_string(change_plan.remaining)}.")
 
